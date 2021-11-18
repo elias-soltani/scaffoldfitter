@@ -13,10 +13,12 @@ from scaffoldfitter.fitterstepfit import FitterStepFit
 
 here = os.path.abspath(os.path.dirname(__file__))
 
+
 def assertAlmostEqualList(testcase, actualList, expectedList, delta):
     assert len(actualList) == len(expectedList)
     for actual, expected in zip(actualList, expectedList):
         testcase.assertAlmostEqual(actual, expected, delta=delta)
+
 
 def getRotationMatrix(eulerAngles):
     """
@@ -42,10 +44,11 @@ def getRotationMatrix(eulerAngles):
         sin_azimuth*sin_elevation*cos_roll - cos_azimuth*sin_roll,
         -sin_elevation,
         cos_elevation*sin_roll,
-        cos_elevation*cos_roll,
+        cos_elevation*cos_roll
         ]
 
-def transformCoordinatesList(xIn : list, transformationMatrix, translation):
+
+def transformCoordinatesList(xIn: list, transformationMatrix, translation):
     """
     Transforms coordinates by multiplying by 9-component transformationMatrix
     then offsetting by translation.
@@ -64,7 +67,8 @@ def transformCoordinatesList(xIn : list, transformationMatrix, translation):
         xOut.append(x2)
     return xOut
 
-def getNodesetConditionalSize(nodeset : Nodeset, conditionalField : Field):
+
+def getNodesetConditionalSize(nodeset: Nodeset, conditionalField: Field):
     """
     :return: Number of objects in nodeset for which conditionalField is True.
     """
@@ -81,6 +85,7 @@ def getNodesetConditionalSize(nodeset : Nodeset, conditionalField : Field):
             size += 1
         node = nodeiterator.next()
     return size
+
 
 class FitCubeToSphereTestCase(unittest.TestCase):
 
@@ -99,29 +104,29 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         self.assertEqual(fitter.getModelCoordinatesField().getName(), "coordinates")
         self.assertEqual(fitter.getDataCoordinatesField().getName(), "data_coordinates")
         self.assertEqual(fitter.getMarkerGroup().getName(), "marker")
-        bottomCentre1 = fitter.evaluateNodeGroupMeanCoordinates("bottom", "coordinates", isData = False)
-        sidesCentre1 = fitter.evaluateNodeGroupMeanCoordinates("sides", "coordinates", isData = False)
-        topCentre1 = fitter.evaluateNodeGroupMeanCoordinates("top", "coordinates", isData = False)
-        assertAlmostEqualList(self, bottomCentre1, [ 0.5, 0.5, 0.0 ], delta=1.0E-7)
-        assertAlmostEqualList(self, sidesCentre1, [ 0.5, 0.5, 0.5 ], delta=1.0E-7)
-        assertAlmostEqualList(self, topCentre1, [ 0.5, 0.5, 1.0 ], delta=1.0E-7)
+        bottomCentre1 = fitter.evaluateNodeGroupMeanCoordinates("bottom", "coordinates", isData=False)
+        sidesCentre1 = fitter.evaluateNodeGroupMeanCoordinates("sides", "coordinates", isData=False)
+        topCentre1 = fitter.evaluateNodeGroupMeanCoordinates("top", "coordinates", isData=False)
+        assertAlmostEqualList(self, bottomCentre1, [0.5, 0.5, 0.0], delta=1.0E-7)
+        assertAlmostEqualList(self, sidesCentre1, [0.5, 0.5, 0.5], delta=1.0E-7)
+        assertAlmostEqualList(self, topCentre1, [0.5, 0.5, 1.0], delta=1.0E-7)
         align = FitterStepAlign()
         fitter.addFitterStep(align)
         align.setScale(1.1)
-        align.setTranslation([ 0.1, -0.2, 0.3 ])
-        align.setRotation([ math.pi/4.0, math.pi/8.0, math.pi/2.0 ])
+        align.setTranslation([0.1, -0.2, 0.3])
+        align.setRotation([math.pi/4.0, math.pi/8.0, math.pi/2.0])
         self.assertFalse(align.isAlignMarkers())
         align.run()
         rotation = align.getRotation()
         scale = align.getScale()
         translation = align.getTranslation()
         rotationMatrix = getRotationMatrix(rotation)
-        transformationMatrix = [ v*scale for v in rotationMatrix ]
+        transformationMatrix = [v*scale for v in rotationMatrix]
         bottomCentre2Expected, sidesCentre2Expected, topCentre2Expected = transformCoordinatesList(
-            [ bottomCentre1, sidesCentre1, topCentre1 ], transformationMatrix, translation)
-        bottomCentre2 = fitter.evaluateNodeGroupMeanCoordinates("bottom", "coordinates", isData = False)
-        sidesCentre2 = fitter.evaluateNodeGroupMeanCoordinates("sides", "coordinates", isData = False)
-        topCentre2 = fitter.evaluateNodeGroupMeanCoordinates("top", "coordinates", isData = False)
+            [bottomCentre1, sidesCentre1, topCentre1], transformationMatrix, translation)
+        bottomCentre2 = fitter.evaluateNodeGroupMeanCoordinates("bottom", "coordinates", isData=False)
+        sidesCentre2 = fitter.evaluateNodeGroupMeanCoordinates("sides", "coordinates", isData=False)
+        topCentre2 = fitter.evaluateNodeGroupMeanCoordinates("top", "coordinates", isData=False)
         assertAlmostEqualList(self, bottomCentre2, bottomCentre2Expected, delta=1.0E-7)
         assertAlmostEqualList(self, sidesCentre2, sidesCentre2Expected, delta=1.0E-7)
         assertAlmostEqualList(self, topCentre2, topCentre2Expected, delta=1.0E-7)
@@ -143,7 +148,7 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         self.assertEqual(coordinates.getName(), "coordinates")
         self.assertEqual(fitter.getDataCoordinatesField().getName(), "data_coordinates")
         self.assertEqual(fitter.getMarkerGroup().getName(), "marker")
-        #fitter.getRegion().writeFile(os.path.join(here, "resources", "km_fitgeometry1.exf"))
+        # fitter.getRegion().writeFile(os.path.join(here, "resources", "km_fitgeometry1.exf"))
         fieldmodule = fitter.getFieldmodule()
         surfaceAreaField = createFieldMeshIntegral(coordinates, fitter.getMesh(2), number_of_points=4)
         volumeField = createFieldMeshIntegral(coordinates, fitter.getMesh(3), number_of_points=3)
@@ -156,10 +161,10 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         self.assertAlmostEqual(volume, 1.0, delta=1.0E-7)
         activeNodeset = fitter.getActiveDataNodesetGroup()
         self.assertEqual(292, activeNodeset.getSize())
-        self.assertEqual(72, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("bottom")))
-        self.assertEqual(144, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("sides")))
-        self.assertEqual(72, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("top")))
-        self.assertEqual(4, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("marker")))
+        groupSizes = {"bottom": 72, "sides": 144, "top": 72, "marker": 4}
+        for groupName, count in groupSizes.items():
+            self.assertEqual(count, getNodesetConditionalSize(
+                activeNodeset, fitter.getFieldmodule().findFieldByName(groupName)))
 
         align = FitterStepAlign()
         fitter.addFitterStep(align)
@@ -167,13 +172,14 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         self.assertTrue(align.setAlignMarkers(True))
         self.assertTrue(align.isAlignMarkers())
         align.run()
-        #fitter.getRegion().writeFile(os.path.join(here, "resources", "km_fitgeometry2.exf"))
+        # fitter.getRegion().writeFile(os.path.join(here, "resources", "km_fitgeometry2.exf"))
         rotation = align.getRotation()
         scale = align.getScale()
         translation = align.getTranslation()
-        assertAlmostEqualList(self, rotation, [ -0.25*math.pi, 0.0, 0.0 ], delta=1.0E-4)
+        assertAlmostEqualList(self, rotation, [-0.25*math.pi, 0.0, 0.0], delta=1.0E-4)
         self.assertAlmostEqual(scale, 0.8047378476539072, places=5)
-        assertAlmostEqualList(self, translation, [ -0.5690355950594247, 1.1068454682130484e-05, -0.4023689233125251 ], delta=1.0E-6)
+        assertAlmostEqualList(self, translation,
+                              [-0.5690355950594247, 1.1068454682130484e-05, -0.4023689233125251], delta=1.0E-6)
         result, surfaceArea = surfaceAreaField.evaluateReal(fieldcache, 1)
         self.assertEqual(result, RESULT_OK)
         self.assertAlmostEqual(surfaceArea, 3.885618020657802, delta=1.0E-6)
@@ -184,12 +190,12 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         fit1 = FitterStepFit()
         fitter.addFitterStep(fit1)
         self.assertEqual(3, len(fitter.getFitterSteps()))
-        fit1.setMarkerWeight(1.0)
-        fit1.setCurvaturePenaltyWeight(0.01)
+        fit1.setGroupDataWeight("marker", 1.0)
+        fit1.setGroupCurvaturePenalty(None, [0.01])
         fit1.setNumberOfIterations(3)
         fit1.setUpdateReferenceState(True)
         fit1.run()
-        #fitter.getRegion().writeFile(os.path.join(here, "resources", "km_fitgeometry3.exf"))
+        # fitter.getRegion().writeFile(os.path.join(here, "resources", "km_fitgeometry3.exf"))
 
         result, surfaceArea = surfaceAreaField.evaluateReal(fieldcache, 1)
         self.assertEqual(result, RESULT_OK)
@@ -207,8 +213,8 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         self.assertTrue(isinstance(fitterSteps[0], FitterStepConfig))
         self.assertTrue(isinstance(fitterSteps[1], FitterStepAlign))
         self.assertTrue(isinstance(fitterSteps[2], FitterStepFit))
-        #fitter2.load()
-        #for fitterStep in fitterSteps:
+        # fitter2.load()
+        # for fitterStep in fitterSteps:
         #    fitterStep.run()
         s2 = fitter.encodeSettingsJSON()
         self.assertEqual(s, s2)
@@ -237,7 +243,6 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         result, volume = volumeField.evaluateReal(fieldcache, 1)
         self.assertEqual(result, RESULT_OK)
         self.assertAlmostEqual(volume, 2.0, delta=1.0E-6)
-        activeNodeset = fitter.getActiveDataNodesetGroup()
 
         align = FitterStepAlign()
         fitter.addFitterStep(align)
@@ -250,7 +255,8 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         translation = align.getTranslation()
         assertAlmostEqualList(self, rotation, [0.0, 0.0, 0.0], delta=1.0E-5)
         self.assertAlmostEqual(scale, 1.040599599095245, places=5)
-        assertAlmostEqualList(self, translation, [-1.0405995643008867, -0.5202997843515198, -0.5202997827678563], delta=1.0E-6)
+        assertAlmostEqualList(self, translation, [-1.0405995643008867, -0.5202997843515198, -0.5202997827678563],
+                              delta=1.0E-6)
         result, surfaceArea = surfaceAreaField.evaluateReal(fieldcache, 1)
         self.assertEqual(result, RESULT_OK)
         self.assertAlmostEqual(surfaceArea, 11.0*scale*scale, delta=1.0E-6)
@@ -382,7 +388,6 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         s2 = fitter.encodeSettingsJSON()
         self.assertEqual(s, s2)
 
-
     def test_fitRegularDataGroupWeight(self):
         """
         Test automatic alignment of model and data using fiducial markers.
@@ -416,14 +421,13 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         self.assertEqual(2, len(groupNames))
         self.assertEqual((0.5, True, False), fit1.getGroupDataWeight("bottom"))
         self.assertEqual((0.1, True, False), fit1.getGroupDataWeight("sides"))
-        fit1.setCurvaturePenaltyWeight(0.01)
+        fit1.setGroupCurvaturePenalty(None, [0.01])
         fit1.setNumberOfIterations(3)
         fit1.setUpdateReferenceState(True)
         fit1.run()
         dataWeightField = fieldmodule.findFieldByName("data_weight").castFiniteElement()
         self.assertTrue(dataWeightField.isValid())
-        groupData = { "bottom" : ( 72, 0.5 ), "sides" : ( 144, 0.1 ), "top" : ( 72, 1.0 ) }
-        mesh2d = fitter.getMesh(2)
+        groupData = {"bottom": (72, 0.5), "sides": (144, 0.1), "top": (72, 1.0)}
         for groupName in groupData.keys():
             expectedSize, expectedWeight = groupData[groupName]
             group = fieldmodule.findFieldByName(groupName).castGroup()
@@ -494,10 +498,10 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         fitter.load()
         activeNodeset = fitter.getActiveDataNodesetGroup()
         self.assertEqual(141, activeNodeset.getSize())
-        self.assertEqual(72, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("bottom")))
-        self.assertEqual(36, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("sides")))
-        self.assertEqual(29, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("top")))
-        self.assertEqual(4, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("marker")))
+        groupSizes = {"bottom": 72, "sides": 36, "top": 29, "marker": 4}
+        for groupName, count in groupSizes.items():
+            self.assertEqual(count, getNodesetConditionalSize(
+                activeNodeset, fitter.getFieldmodule().findFieldByName(groupName)))
         # test override and inherit
         config2 = FitterStepConfig()
         fitter.addFitterStep(config2)
@@ -511,10 +515,10 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         config2.run()
         activeNodeset = fitter.getActiveDataNodesetGroup()
         self.assertEqual(184, activeNodeset.getSize())
-        self.assertEqual(72, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("bottom")))
-        self.assertEqual(36, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("sides")))
-        self.assertEqual(72, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("top")))
-        self.assertEqual(4, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("marker")))
+        groupSizes = {"bottom": 72, "sides": 36, "top": 72, "marker": 4}
+        for groupName, count in groupSizes.items():
+            self.assertEqual(count, getNodesetConditionalSize(
+                activeNodeset, fitter.getFieldmodule().findFieldByName(groupName)))
         # test inherit through 2 previous configs and cancel/None in config2
         config3 = FitterStepConfig()
         fitter.addFitterStep(config3)
@@ -525,10 +529,9 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         config3.run()
         activeNodeset = fitter.getActiveDataNodesetGroup()
         self.assertEqual(184, activeNodeset.getSize())
-        self.assertEqual(72, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("bottom")))
-        self.assertEqual(36, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("sides")))
-        self.assertEqual(72, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("top")))
-        self.assertEqual(4, getNodesetConditionalSize(activeNodeset, fitter.getFieldmodule().findFieldByName("marker")))
+        for groupName, count in groupSizes.items():
+            self.assertEqual(count, getNodesetConditionalSize(
+                activeNodeset, fitter.getFieldmodule().findFieldByName(groupName)))
         del config1
         del config2
         del config3
@@ -568,17 +571,18 @@ class FitCubeToSphereTestCase(unittest.TestCase):
         fitter.setDiagnosticLevel(1)
 
         # Rotation, scale, translation
-        transformationList = [[[ 0.0, 0.0, 0.0 ], 1.0, [ 0.0, 0.0, 0.0 ]],
-                              [[ math.pi * 20/180, 0.0, 0.0 ], 1.0, [ 0.0, 0.0, 0.0 ]],
-                              [[ math.pi * 135/180, 0.0, 0.0 ], 1.0, [ 0.0, 0.0, 0.0 ]],
-                              [[ math.pi * 250/180, math.pi * -45/180, 0.0 ], 1.0, [ 0.0, 0.0, 0.0 ]],
-                              [[ math.pi * 45/180, math.pi * 45/180, math.pi * 45/180 ], 1.0, [ 0.0, 0.0, 0.0 ]],
-                              [[ 0.0, 0.0, 0.0 ], 0.05, [ 0.0, 0.0, 0.0]],
-                              [[ math.pi * 70/180, math.pi * 10/180, math.pi * -300/180 ], 0.2, [ 0.0, 0.0, 0.0 ]],
-                              [[ 0.0, 0.0, 0.0 ], 1.0, [ 15.0, 15.0, 15.0 ]],
-                              [[ 0.0, 0.0, 0.0 ], 20.0, [ 50.0, 0.0, 10.0 ]],
-                              [[ math.pi * 90/180, math.pi * 200/180, math.pi * 5/180 ], 1.0, [ -10.0, -20.0, 100.0 ]],
-                              [[ math.pi * -45/180, math.pi * 120/180, math.pi * 10/180 ], 500.0, [ 100.0, 100.0, 100.0 ]]]
+        transformationList = [
+            [[0.0, 0.0, 0.0], 1.0, [0.0, 0.0, 0.0]],
+            [[math.pi * 20/180, 0.0, 0.0], 1.0, [0.0, 0.0, 0.0]],
+            [[math.pi * 135/180, 0.0, 0.0], 1.0, [0.0, 0.0, 0.0]],
+            [[math.pi * 250/180, math.pi * -45/180, 0.0], 1.0, [0.0, 0.0, 0.0]],
+            [[math.pi * 45/180, math.pi * 45/180, math.pi * 45/180], 1.0, [0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0], 0.05, [0.0, 0.0, 0.0]],
+            [[math.pi * 70/180, math.pi * 10/180, math.pi * -300/180], 0.2, [0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0], 1.0, [15.0, 15.0, 15.0]],
+            [[0.0, 0.0, 0.0], 20.0, [50.0, 0.0, 10.0]],
+            [[math.pi * 90/180, math.pi * 200/180, math.pi * 5/180], 1.0, [-10.0, -20.0, 100.0]],
+            [[math.pi * -45/180, math.pi * 120/180, math.pi * 10/180], 500.0, [100.0, 100.0, 100.0]]]
 
         expectedAlignedNodes = [[-0.5690355951820659, 1.1070979208244695e-05, -0.40236892417087866],
                                 [-1.1077595833408616e-05, -0.5690355904946871, -0.4023689227447479],
@@ -616,6 +620,7 @@ class FitCubeToSphereTestCase(unittest.TestCase):
                 fieldcache.setNode(node)
                 result, x = modelCoordinates.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_VALUE, 1, 3)
                 assertAlmostEqualList(self, x, expectedAlignedNodes[nodeIdentifier - 1], delta=1.0E-3)
+
 
 if __name__ == "__main__":
     unittest.main()

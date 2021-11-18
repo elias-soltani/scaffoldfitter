@@ -1,6 +1,7 @@
 """
 Base class for fitter steps.
 """
+import abc
 
 
 class FitterStep:
@@ -33,13 +34,18 @@ class FitterStep:
     def getFitter(self):
         return self._fitter
 
-    def _setFitter(self, fitter):
-        '''
+    def setFitter(self, fitter):
+        """
         Should only be called by Fitter when adding or removing from it.
-        '''
+        """
         self._fitter = fitter
 
-    def decodeSettingsJSONDict(self, dctIn : dict):
+    @classmethod
+    @abc.abstractmethod
+    def getJsonTypeId(cls):
+        pass
+
+    def decodeSettingsJSONDict(self, dctIn: dict):
         """
         Decode definition of step from JSON dict.
         """
@@ -55,8 +61,8 @@ class FitterStep:
         :return: Settings in a dict ready for passing to json.dump.
         """
         return {
-            self.getJsonTypeId() : True,
-            "groupSettings" : self._groupSettings
+            self.getJsonTypeId(): True,
+            "groupSettings": self._groupSettings
             }
 
     def getGroupSettingsNames(self):
@@ -65,7 +71,7 @@ class FitterStep:
         """
         return list(self._groupSettings.keys())
 
-    def clearGroupSetting(self, groupName : str, settingName : str):
+    def clearGroupSetting(self, groupName: str, settingName: str):
         """
         Clear setting for group, removing group settings dict if empty.
         :param groupName:  Exact model group name, or None for default group.
@@ -79,7 +85,7 @@ class FitterStep:
             if len(groupSettings) == 0:
                 self._groupSettings.pop(groupName)
 
-    def _getInheritedGroupSetting(self, groupName : str, settingName : str):
+    def _getInheritedGroupSetting(self, groupName: str, settingName: str):
         """
         :param groupName:  Exact model group name, or None for default group.
         :param settingName: Exact setting name.
@@ -98,7 +104,7 @@ class FitterStep:
                 if inheritedValue != "<not set>":
                     return inheritedValue
 
-    def getGroupSetting(self, groupName : str, settingName : str, defaultValue):
+    def getGroupSetting(self, groupName: str, settingName: str, defaultValue):
         """
         Get group setting of supplied name, with reset & inherit ability.
         :param groupName:  Exact model group name, or None for default group.
@@ -130,7 +136,7 @@ class FitterStep:
                 value = defaultValue
         return value, setLocally, inheritable
 
-    def setGroupSetting(self, groupName : str, settingName : str, value):
+    def setGroupSetting(self, groupName: str, settingName: str, value):
         """
         Set value of setting or None to reset to default.
         :param groupName:  Exact model group name, or None for default group.

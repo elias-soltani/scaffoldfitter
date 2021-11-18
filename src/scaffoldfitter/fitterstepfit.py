@@ -2,13 +2,12 @@
 Fit step for gross alignment and scale.
 """
 
-from opencmiss.utils.zinc.field import assignFieldParameters, createFieldsDisplacementGradients
 from opencmiss.utils.zinc.general import ChangeManager
-from opencmiss.zinc.field import Field, FieldFindMeshLocation
 from opencmiss.zinc.optimisation import Optimisation
 from opencmiss.zinc.result import RESULT_OK
 from scaffoldfitter.fitterstep import FitterStep
 import sys
+
 
 class FitterStepFit(FitterStep):
 
@@ -27,7 +26,7 @@ class FitterStepFit(FitterStep):
     def getJsonTypeId(cls):
         return cls._jsonTypeId
 
-    def decodeSettingsJSONDict(self, dctIn : dict):
+    def decodeSettingsJSONDict(self, dctIn: dict):
         """
         Decode definition of step from JSON dict.
         """
@@ -41,10 +40,10 @@ class FitterStepFit(FitterStep):
         # migrate legacy settings
         lineWeight = dct.get("lineWeight")
         if lineWeight is not None:
-            self.setLineWeight(lineWeight)
+            print("Legacy lineWeight attribute ignored as feature removed", file=sys.stderr)
         markerWeight = dct.get("markerWeight")
         if markerWeight is not None:
-            self.setMarkerWeight(markerWeight)
+            print("Legacy markerWeight attribute ignored as feature removed", file=sys.stderr)
         # convert legacy single-valued strain and curvature penalty weights to list:
         strainPenaltyWeight = dct.get("strainPenaltyWeight")
         if strainPenaltyWeight is not None:
@@ -60,20 +59,20 @@ class FitterStepFit(FitterStep):
         """
         dct = super().encodeSettingsJSONDict()
         dct.update({
-            "numberOfIterations" : self._numberOfIterations,
-            "maximumSubIterations" : self._maximumSubIterations,
-            "updateReferenceState" : self._updateReferenceState
+            "numberOfIterations": self._numberOfIterations,
+            "maximumSubIterations": self._maximumSubIterations,
+            "updateReferenceState": self._updateReferenceState
             })
         return dct
 
-    def clearGroupDataWeight(self, groupName: str):
+    def clearGroupDataWeight(self, groupName):
         """
         Clear group data weight so fall back to last fit or global default.
         :param groupName:  Exact model group name, or None for default group.
         """
         self.clearGroupSetting(groupName, self._dataWeightToken)
 
-    def getGroupDataWeight(self, groupName: str):
+    def getGroupDataWeight(self, groupName):
         """
         Get group data weight to apply in fit, and associated flags.
         If not set or inherited, gets value from default group.
@@ -86,10 +85,10 @@ class FitterStepFit(FitterStep):
         """
         return self.getGroupSetting(groupName, self._dataWeightToken, 1.0)
 
-    def setGroupDataWeight(self, groupName: str, weight):
+    def setGroupDataWeight(self, groupName, weight):
         """
         Set group data weight to apply in fit, or reset to use default.
-        :param groupName:  Exact model group name, or default group name.
+        :param groupName:  Exact model group name, or None for default group.
         :param weight:  Float valued weight >= 0.0, or None to reset to global
         default. Function ensures value is valid.
         """
@@ -100,58 +99,6 @@ class FitterStepFit(FitterStep):
                 weight = 0.0
         self.setGroupSetting(groupName, self._dataWeightToken, weight)
 
-    def getLineWeight(self):
-        """
-        :deprecated: Use getGroupDataWeight().
-        """
-        print("Fit getLineWeight is deprecated", file=sys.stderr)
-        groupNames = self._fitter.getDataProjectionGroupNames()
-        fieldmodule = self._fitter.getFieldmodule()
-        for groupName in groupNames:
-            group = fieldmodule.findFieldByName(groupName).castGroup()
-            meshGroup = self.getGroupDataProjectionMeshGroup(group)
-            dimension = meshGroup.getDimension()
-            if dimension == 1:
-                return self.getGroupDataWeight(groupName, lineWeight)[0]
-        return 0.0
-
-    def setLineWeight(self, lineWeight):
-        """
-        :deprecated: Use setGroupDataWeight().
-        """
-        print("Fit setLineWeight is deprecated", file=sys.stderr)
-        groupNames = self._fitter.getDataProjectionGroupNames()
-        fieldmodule = self._fitter.getFieldmodule()
-        for groupName in groupNames:
-            group = fieldmodule.findFieldByName(groupName).castGroup()
-            meshGroup = self.getGroupDataProjectionMeshGroup(group)
-            dimension = meshGroup.getDimension()
-            if dimension == 1:
-                self.setGroupDataWeight(groupName, lineWeight)
-
-    def getMarkerWeight(self):
-        """
-        :deprecated: Use getGroupDataWeight().
-        """
-        print("Fit getMarkerWeight is deprecated", file=sys.stderr)
-        markerGroup = self._fitter.getMarkerGroup()
-        if markerGroup:
-            return self.getGroupDataWeight(markerGroup.getName(), markerWeight)[0]
-        else:
-            print("Fit getMarkerWeight. Missing marker group", file=sys.stderr)
-        return 0.0
-
-    def setMarkerWeight(self, markerWeight):
-        """
-        :deprecated: Use setGroupDataWeight().
-        """
-        print("Fit setMarkerWeight is deprecated", file=sys.stderr)
-        markerGroup = self._fitter.getMarkerGroup()
-        if markerGroup:
-            self.setGroupDataWeight(markerGroup.getName(), markerWeight)
-        else:
-            print("Fit setMarkerWeight. Missing marker group: need to set marker group data weight to ", markerWeight, file=sys.stderr)
-
     def clearGroupStrainPenalty(self, groupName: str):
         """
         Clear local group strain penalty so fall back to last fit or global default.
@@ -159,11 +106,11 @@ class FitterStepFit(FitterStep):
         """
         self.clearGroupSetting(groupName, self._strainPenaltyToken)
 
-    def getGroupStrainPenalty(self, groupName: str, count=None):
+    def getGroupStrainPenalty(self, groupName, count=None):
         """
         Get list of strain penalty factors used to scale first deformation
         gradient components in group. Up to 9 components possible in 3-D.
-        :param groupName:  Exact model group name, or default group name.
+        :param groupName:  Exact model group name, or None for default group.
         :param count: Optional number of factors to limit or enlarge list to.
         If enlarging, values are padded with the last stored value. If None,
         the number stored is requested.
@@ -188,10 +135,10 @@ class FitterStepFit(FitterStep):
             strainPenalty = strainPenalty[:]  # shallow copy
         return strainPenalty, setLocally, inheritable
 
-    def setGroupStrainPenalty(self, groupName: str, strainPenalty):
+    def setGroupStrainPenalty(self, groupName, strainPenalty):
         """
-        :param groupName:  Exact model group name, or default group name.
-        :param factors: List of 1-9 float-value strain penalty factors to scale
+        :param groupName:  Exact model group name, or None for default group.
+        :param strainPenalty: List of 1-9 float-value strain penalty factors to scale
         first deformation gradient components, or None to reset to inherited or
         default value. If fewer than 9 values are supplied in the list, the
         last value is used for all remaining components.
@@ -202,42 +149,24 @@ class FitterStepFit(FitterStep):
             count = len(strainPenalty)
             assert count > 0, "FitterStepFit: setGroupStrainPenalty requires a list of at least 1 float"
             for i in range(count):
-                assert isinstance(strainPenalty[i], float), "FitterStepFit: setGroupStrainPenalty requires a list of float"
+                assert isinstance(strainPenalty[i], float), \
+                    "FitterStepFit: setGroupStrainPenalty requires a list of float"
                 if strainPenalty[i] < 0.0:
                     strainPenalty[i] = 0.0
         self.setGroupSetting(groupName, self._strainPenaltyToken, strainPenalty)
 
-    def getStrainPenaltyWeight(self) -> float:
-        """
-        :deprecated: use getGroupStrainPenalty[default group name]
-        :return: Single strain penalty weight.
-        """
-        print("Fit getStrainPenaltyWeight is deprecated", file=sys.stderr)
-        strainPenalty = self.getGroupStrainPenalty(None)[0]
-        if len(strainPenalty) > 1:
-            print("Warning: Calling deprecated getStrainPenaltyWeight while multiple factors", file=sys.stderr)
-        return strainPenalty[0]
-
-    def setStrainPenaltyWeight(self, weight : float):
-        """
-        :deprecated: use setGroupStrainPenalty.
-        :param weight: penalty factor to apply to all first deformation gradient components.
-        """
-        print("Fit setStrainPenaltyWeight is deprecated", file=sys.stderr)
-        self.setGroupStrainPenalty(None, [weight])
-
-    def clearGroupCurvaturePenalty(self, groupName: str):
+    def clearGroupCurvaturePenalty(self, groupName):
         """
         Clear local group curvature penalty so fall back to last fit or global default.
         :param groupName:  Exact model group name, or None for default group.
         """
         self.clearGroupSetting(groupName, self._curvaturePenaltyToken)
 
-    def getGroupCurvaturePenalty(self, groupName: str, count=None):
+    def getGroupCurvaturePenalty(self, groupName, count=None):
         """
         Get list of curvature penalty factors used to scale second deformation
         gradient components in group. Up to 27 components possible in 3-D.
-        :param groupName:  Exact model group name, or default group name.
+        :param groupName:  Exact model group name, or None for default group.
         :param count: Optional number of factors to limit or enlarge list to.
         If enlarging, values are padded with the last stored value. If None,
         the number stored is requested.
@@ -261,9 +190,9 @@ class FitterStepFit(FitterStep):
             curvaturePenalty = curvaturePenalty[:]  # shallow copy
         return curvaturePenalty, setLocally, inheritable
 
-    def setGroupCurvaturePenalty(self, groupName: str, curvaturePenalty):
+    def setGroupCurvaturePenalty(self, groupName, curvaturePenalty):
         """
-        :param groupName:  Exact model group name, or default group name.
+        :param groupName:  Exact model group name, or None for default group.
         :param curvaturePenalty: List of 1-27 float-value curvature penalty
         factors to scale first deformation gradient components, or None to
         reset to inherited or default value. If fewer than 27 values are
@@ -271,41 +200,17 @@ class FitterStepFit(FitterStep):
         components.
         """
         if curvaturePenalty is not None:
-            assert isinstance(curvaturePenalty, list), "FitterStepFit: setGroupCurvaturePenalty requires a list of float"
+            assert isinstance(curvaturePenalty, list), \
+                "FitterStepFit: setGroupCurvaturePenalty requires a list of float"
             curvaturePenalty = curvaturePenalty[:27]  # shallow copy, limiting size
             count = len(curvaturePenalty)
             assert count > 0, "FitterStepFit: setGroupCurvaturePenalty requires a list of at least 1 float"
             for i in range(count):
-                assert isinstance(curvaturePenalty[i], float), "FitterStepFit: setGroupCurvaturePenalty requires a list of float"
+                assert isinstance(curvaturePenalty[i], float), \
+                    "FitterStepFit: setGroupCurvaturePenalty requires a list of float"
                 if curvaturePenalty[i] < 0.0:
                     curvaturePenalty[i] = 0.0
         self.setGroupSetting(groupName, self._curvaturePenaltyToken, curvaturePenalty)
-
-    def getCurvaturePenaltyWeight(self) -> float:
-        """
-        :deprecated: use getGroupCurvaturePenalty[default group name]
-        :return: Single curvature penalty weight.
-        """
-        print("Fit getCurvaturePenaltyWeight is deprecated", file=sys.stderr)
-        curvaturePenalty = self.getGroupCurvaturePenalty(None)[0]
-        if len(curvaturePenalty) > 1:
-            print("Warning: Calling deprecated getCurvaturePenaltyWeight while multiple factors", file=sys.stderr)
-        return curvaturePenalty[0]
-
-    def setCurvaturePenaltyWeight(self, weight : float):
-        """
-        :deprecated: use setCurvaturePenaltyFactors.
-        :param weight: penalty factor to apply to all first deformation gradient components.
-        """
-        print("Fit setCurvaturePenaltyWeight is deprecated", file=sys.stderr)
-        self.setGroupCurvaturePenalty(None, [weight])
-
-    def getEdgeDiscontinuityPenaltyWeight(self):
-        print("Fit getEdgeDiscontinuityPenaltyWeight: feature removed", file=sys.stderr)
-        return 0.0
-
-    def setEdgeDiscontinuityPenaltyWeight(self, weight):
-        print("Fit setEdgeDiscontinuityPenaltyWeight: feature removed", file=sys.stderr)
 
     def getNumberOfIterations(self):
         return self._numberOfIterations
@@ -342,40 +247,41 @@ class FitterStepFit(FitterStep):
         :param modelFileNameStem: Optional name stem of intermediate output file to write.
         """
         self._fitter.assignDataWeights(self)
-        deformActiveMeshGroup, strainActiveMeshGroup, curvatureActiveMeshGroup = self._fitter.assignDeformationPenalties(self)
+        deformActiveMeshGroup, strainActiveMeshGroup, curvatureActiveMeshGroup = \
+            self._fitter.assignDeformationPenalties(self)
 
-        fieldmodule = self._fitter._region.getFieldmodule()
+        fieldmodule = self._fitter.getFieldmodule()
         optimisation = fieldmodule.createOptimisation()
         optimisation.setMethod(Optimisation.METHOD_NEWTON)
         optimisation.addDependentField(self._fitter.getModelCoordinatesField())
         optimisation.setAttributeInteger(Optimisation.ATTRIBUTE_MAXIMUM_ITERATIONS, self._maximumSubIterations)
 
-        #FunctionTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_FUNCTION_TOLERANCE)
-        #GradientTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_GRADIENT_TOLERANCE)
-        #StepTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_STEP_TOLERANCE)
+        # FunctionTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_FUNCTION_TOLERANCE)
+        # GradientTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_GRADIENT_TOLERANCE)
+        # StepTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_STEP_TOLERANCE)
         MaximumStep = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_MAXIMUM_STEP)
         MinimumStep = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_MINIMUM_STEP)
-        #LinesearchTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_LINESEARCH_TOLERANCE)
-        #TrustRegionSize = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_TRUST_REGION_SIZE)
+        # LinesearchTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_LINESEARCH_TOLERANCE)
+        # TrustRegionSize = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_TRUST_REGION_SIZE)
 
         dataScale = self._fitter.getDataScale()
-        #tol_scale = dataScale  # *dataScale
-        #FunctionTolerance *= tol_scale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_FUNCTION_TOLERANCE, FunctionTolerance)
-        #GradientTolerance /= tol_scale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_GRADIENT_TOLERANCE, GradientTolerance)
-        #StepTolerance *= tol_scale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_STEP_TOLERANCE, StepTolerance)
+        # tol_scale = dataScale  # *dataScale
+        # FunctionTolerance *= tol_scale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_FUNCTION_TOLERANCE, FunctionTolerance)
+        # GradientTolerance /= tol_scale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_GRADIENT_TOLERANCE, GradientTolerance)
+        # StepTolerance *= tol_scale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_STEP_TOLERANCE, StepTolerance)
         MaximumStep *= dataScale
         optimisation.setAttributeReal(Optimisation.ATTRIBUTE_MAXIMUM_STEP, MaximumStep)
         MinimumStep *= dataScale
         optimisation.setAttributeReal(Optimisation.ATTRIBUTE_MINIMUM_STEP, MinimumStep)
-        #LinesearchTolerance *= dataScale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_LINESEARCH_TOLERANCE, LinesearchTolerance)
-        #TrustRegionSize *= dataScale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_TRUST_REGION_SIZE, TrustRegionSize)
+        # LinesearchTolerance *= dataScale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_LINESEARCH_TOLERANCE, LinesearchTolerance)
+        # TrustRegionSize *= dataScale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_TRUST_REGION_SIZE, TrustRegionSize)
 
-        #if self.getDiagnosticLevel() > 0:
+        # if self.getDiagnosticLevel() > 0:
         #    print("Function Tolerance", FunctionTolerance)
         #    print("Gradient Tolerance", GradientTolerance)
         #    print("Step Tolerance", StepTolerance)
@@ -384,34 +290,29 @@ class FitterStepFit(FitterStep):
         #    print("Linesearch Tolerance", LinesearchTolerance)
         #    print("Trust Region Size", TrustRegionSize)
 
-        dataObjective = None
         deformationPenaltyObjective = None
-        edgeDiscontinuityPenaltyObjective = None
         with ChangeManager(fieldmodule):
             dataObjective = self.createDataObjectiveField()
             result = optimisation.addObjectiveField(dataObjective)
             assert result == RESULT_OK, "Fit Geometry:  Could not add data objective field"
             if deformActiveMeshGroup.getSize() > 0:
-                deformationPenaltyObjective = self.createDeformationPenaltyObjectiveField(deformActiveMeshGroup, strainActiveMeshGroup, curvatureActiveMeshGroup)
+                deformationPenaltyObjective = self.createDeformationPenaltyObjectiveField(
+                    deformActiveMeshGroup, strainActiveMeshGroup, curvatureActiveMeshGroup)
                 result = optimisation.addObjectiveField(deformationPenaltyObjective)
                 assert result == RESULT_OK, "Fit Geometry:  Could not add strain/curvature penalty objective field"
-            #if self._edgeDiscontinuityPenaltyWeight > 0.0:
-            #    print("WARNING! Edge discontinuity penalty is not supported by NEWTON solver - skipping")
-            #    #edgeDiscontinuityPenaltyObjective = self.createEdgeDiscontinuityPenaltyObjectiveField()
-            #    #result = optimisation.addObjectiveField(edgeDiscontinuityPenaltyObjective)
-            #    #assert result == RESULT_OK, "Fit Geometry:  Could not add edge discontinuity penalty objective field"
 
         fieldcache = fieldmodule.createFieldcache()
         objectiveFormat = "{:12e}"
-        for iter in range(self._numberOfIterations):
-            iterName = str(iter + 1)
+        for iterationIndex in range(self._numberOfIterations):
+            iterName = str(iterationIndex + 1)
             if self.getDiagnosticLevel() > 0:
                 print("-------- Iteration " + iterName)
             if self.getDiagnosticLevel() > 0:
                 result, objective = dataObjective.evaluateReal(fieldcache, 1)
                 print("    Data objective", objectiveFormat.format(objective))
                 if deformationPenaltyObjective:
-                    result, objective = deformationPenaltyObjective.evaluateReal(fieldcache, deformationPenaltyObjective.getNumberOfComponents())
+                    result, objective = deformationPenaltyObjective.evaluateReal(
+                        fieldcache, deformationPenaltyObjective.getNumberOfComponents())
                     print("    Deformation penalty objective", objectiveFormat.format(objective))
             result = optimisation.optimise()
             if self.getDiagnosticLevel() > 1:
@@ -427,7 +328,8 @@ class FitterStepFit(FitterStep):
             result, objective = dataObjective.evaluateReal(fieldcache, 1)
             print("    END Data objective", objectiveFormat.format(objective))
             if deformationPenaltyObjective:
-                result, objective = deformationPenaltyObjective.evaluateReal(fieldcache, deformationPenaltyObjective.getNumberOfComponents())
+                result, objective = deformationPenaltyObjective.evaluateReal(
+                    fieldcache, deformationPenaltyObjective.getNumberOfComponents())
                 print("    END Deformation penalty objective", objectiveFormat.format(objective))
 
         if self._updateReferenceState:
@@ -445,58 +347,67 @@ class FitterStepFit(FitterStep):
         delta = self._fitter.getDataDeltaField()
         weight = self._fitter.getDataWeightField()
         deltaSq = fieldmodule.createFieldDotProduct(delta, delta)
-        #dataProjectionInDirection = fieldmodule.createFieldDotProduct(dataProjectionDelta, self._fitter.getDataProjectionDirectionField())
-        #dataProjectionInDirection = fieldmodule.createFieldMagnitude(dataProjectionDelta)
-        #dataProjectionInDirection = dataProjectionDelta
-        #dataProjectionInDirection = fieldmodule.createFieldConstant([ weight/dataScale ]*dataProjectionDelta.getNumberOfComponents()) * dataProjectionDelta
-        dataProjectionObjective = fieldmodule.createFieldNodesetSum(weight*deltaSq, self._fitter.getActiveDataNodesetGroup())
+        # dataProjectionInDirection = fieldmodule.createFieldDotProduct(
+        #     dataProjectionDelta, self._fitter.getDataProjectionDirectionField())
+        # dataProjectionInDirection = fieldmodule.createFieldMagnitude(dataProjectionDelta)
+        # dataProjectionInDirection = dataProjectionDelta
+        # dataProjectionInDirection = fieldmodule.createFieldConstant(
+        #     [ weight/dataScale ]*dataProjectionDelta.getNumberOfComponents()) * dataProjectionDelta
+        dataProjectionObjective = fieldmodule.createFieldNodesetSum(
+            weight*deltaSq, self._fitter.getActiveDataNodesetGroup())
         dataProjectionObjective.setElementMapField(self._fitter.getDataHostLocationField())
         return dataProjectionObjective
 
-    def createDeformationPenaltyObjectiveField(self, deformActiveMeshGroup, strainActiveMeshGroup, curvatureActiveMeshGroup):
+    def createDeformationPenaltyObjectiveField(self, deformActiveMeshGroup, strainActiveMeshGroup,
+                                               curvatureActiveMeshGroup):
         """
         Only call for non-zero strain or curvature penalty values.
-        :param deformActiveMeshGroup, strainActiveMeshGroup, curvatureActiveMeshGroup:
-        Mesh groups over which to apply combined, strain or curvature penalties.
+        :param deformActiveMeshGroup: Mesh group over which either penalties is applied.
+        :param strainActiveMeshGroup: Mesh group over which strain penalty is applied.
+        :param curvatureActiveMeshGroup: Mesh group over which curvature penalty is applied.
         :return: Zinc field, or None if not weighted.
         Assumes ChangeManager(fieldmodule) is in effect.
         """
         numberOfGaussPoints = 3
         fieldmodule = self._fitter.getFieldmodule()
         mesh = self._fitter.getHighestDimensionMesh()
-        dataScale = 1.0
         # future: eliminate effect of model scale
-        #dimension = mesh.getDimension()
-        #linearDataScale = self._fitter.getDataScale()
-        #for d in range(dimension):
+        # dataScale = 1.0
+        # dimension = mesh.getDimension()
+        # linearDataScale = self._fitter.getDataScale()
+        # for d in range(dimension):
         #    dataScale /= linearDataScale
         modelCoordinates = self._fitter.getModelCoordinatesField()
         modelReferenceCoordinates = self._fitter.getModelReferenceCoordinatesField()
         fibreField = self._fitter.getFibreField()
         dimension = mesh.getDimension()
         coordinatesCount = modelCoordinates.getNumberOfComponents()
-        zincVersion = self._fitter.getZincVersion()
-        #zincVersion34 = (zincVersion[0] > 3) or ((zincVersion[0] == 3) and (zincVersion[1] >= 4))
+        # zincVersion = self._fitter.getZincVersion()
+        # zincVersion34 = (zincVersion[0] > 3) or ((zincVersion[0] == 3) and (zincVersion[1] >= 4))
         assert coordinatesCount == dimension, \
             "Fit strain/curvature penalties cannot be applied as element dimension < coordinate components. "
         displacement = modelCoordinates - modelReferenceCoordinates
-        displacementGradient1 = displacementGradient1raw = fieldmodule.createFieldGradient(displacement, modelReferenceCoordinates)
+        displacementGradient1 = displacementGradient1raw =\
+            fieldmodule.createFieldGradient(displacement, modelReferenceCoordinates)
+        fibreAxesT = None
         if fibreField:
             # convert to local fibre directions, with possible dimension reduction for 2D, 1D
             fibreAxes = fieldmodule.createFieldFibreAxes(fibreField, modelReferenceCoordinates)
             if dimension == 3:
                 fibreAxesT = fieldmodule.createFieldTranspose(3, fibreAxes)
             elif dimension == 2:
-                fibreAxesT = fieldmodule.createFieldComponent(fibreAxes, \
-                    [1, 4, 2, 5, 3, 6] if (coordinatesCount == 3) else [1, 4, 2, 5])
+                fibreAxesT = fieldmodule.createFieldComponent(
+                    fibreAxes, [1, 4, 2, 5, 3, 6] if (coordinatesCount == 3) else [1, 4, 2, 5])
             else:  # dimension == 1
-                fibreAxesT = fieldmodule.createFieldComponent(fibreAxes, \
-                    [1, 2, 3] if (coordinatesCount == 3) else [1, 2] if (coordinatesCount == 2) else [1])
-            displacementGradient1 = fieldmodule.createFieldMatrixMultiply(coordinatesCount, displacementGradient1, fibreAxesT)
+                fibreAxesT = fieldmodule.createFieldComponent(
+                    fibreAxes, [1, 2, 3] if (coordinatesCount == 3) else [1, 2] if (coordinatesCount == 2) else [1])
+            displacementGradient1 = \
+                fieldmodule.createFieldMatrixMultiply(coordinatesCount, displacementGradient1, fibreAxesT)
         deformationTerm = None
         if strainActiveMeshGroup.getSize() > 0:
             alpha = self._fitter.getStrainPenaltyField()
-            wtSqDeformationGradient1 = fieldmodule.createFieldDotProduct(alpha, displacementGradient1*displacementGradient1)
+            wtSqDeformationGradient1 = \
+                fieldmodule.createFieldDotProduct(alpha, displacementGradient1*displacementGradient1)
             assert wtSqDeformationGradient1.isValid()
             deformationTerm = wtSqDeformationGradient1
         if curvatureActiveMeshGroup.getSize() > 0:
@@ -504,41 +415,34 @@ class FitterStepFit(FitterStep):
             displacementGradient2 = fieldmodule.createFieldGradient(displacementGradient1raw, modelReferenceCoordinates)
             if fibreField:
                 # convert to local fibre directions
-                displacementGradient2a = fieldmodule.createFieldMatrixMultiply(coordinatesCount*coordinatesCount, displacementGradient2, fibreAxesT)
+                displacementGradient2a = fieldmodule.createFieldMatrixMultiply(coordinatesCount*coordinatesCount,
+                                                                               displacementGradient2, fibreAxesT)
                 # transpose each displacement component of displacementGradient2a to remultiply by fibreAxesT
                 if dimension == 1:
                     displacementGradient2aT = displacementGradient2a
                 else:
+                    transposeComponents = None
                     if coordinatesCount == 3:
                         if dimension == 3:
-                            transposeComponents = [1, 4, 7, 2, 5, 8, 3, 6, 9, 10, 13, 16, 11, 14, 17, 12, 15, 18, 19, 22, 25, 20, 23, 26, 21, 24, 27]
+                            transposeComponents = [1, 4, 7, 2, 5, 8, 3, 6, 9,
+                                                   10, 13, 16, 11, 14, 17, 12, 15, 18,
+                                                   19, 22, 25, 20, 23, 26, 21, 24, 27]
                         elif dimension == 2:
                             transposeComponents = [1, 3, 5, 2, 4, 6, 7, 9, 11, 8, 10, 12, 13, 15, 17, 14, 16, 18]
                     elif coordinatesCount == 2:
                         transposeComponents = [1, 3, 2, 4, 5, 7, 6, 8]
-                    displacementGradient2aT = fieldmodule.createFieldComponent(displacementGradient2a, transposeComponents)
-                displacementGradient2 = fieldmodule.createFieldMatrixMultiply(dimension*coordinatesCount, displacementGradient2aT, fibreAxesT)
+                    displacementGradient2aT = \
+                        fieldmodule.createFieldComponent(displacementGradient2a, transposeComponents)
+                displacementGradient2 = fieldmodule.createFieldMatrixMultiply(dimension*coordinatesCount,
+                                                                              displacementGradient2aT, fibreAxesT)
             beta = self._fitter.getCurvaturePenaltyField()
-            wtSqDeformationGradient2 = fieldmodule.createFieldDotProduct(beta, displacementGradient2*displacementGradient2)
+            wtSqDeformationGradient2 = \
+                fieldmodule.createFieldDotProduct(beta, displacementGradient2*displacementGradient2)
             assert wtSqDeformationGradient2.isValid()
-            deformationTerm = (deformationTerm + wtSqDeformationGradient2) if deformationTerm else wtSqDeformationGradient2
+            deformationTerm = (deformationTerm + wtSqDeformationGradient2) if deformationTerm \
+                else wtSqDeformationGradient2
 
-        deformationPenaltyObjective = fieldmodule.createFieldMeshIntegral(deformationTerm, self._fitter.getModelReferenceCoordinatesField(), deformActiveMeshGroup)
+        deformationPenaltyObjective = fieldmodule.createFieldMeshIntegral(
+            deformationTerm, self._fitter.getModelReferenceCoordinatesField(), deformActiveMeshGroup)
         deformationPenaltyObjective.setNumbersOfPoints(numberOfGaussPoints)
         return deformationPenaltyObjective
-
-    #def createEdgeDiscontinuityPenaltyObjectiveField(self):
-    #    """
-    #    Only call if self._edgeDiscontinuityPenaltyWeight > 0.0
-    #    Assumes ChangeManager(fieldmodule) is in effect.
-    #    :return: Zinc FieldMeshIntegralSquares, or None if not weighted.
-    #    """
-    #    numberOfGaussPoints = 3
-    #    fieldmodule = self._fitter.getFieldmodule()
-    #    lineMesh = fieldmodule.findMeshByDimension(1)
-    #    edgeDiscontinuity = fieldmodule.createFieldEdgeDiscontinuity(self._fitter.getModelCoordinatesField())
-    #    dataScale = self._fitter.getDataScale()
-    #    weightedEdgeDiscontinuity = edgeDiscontinuity*fieldmodule.createFieldConstant(self._edgeDiscontinuityPenaltyWeight/dataScale)
-    #    edgeDiscontinuityPenaltyObjective = fieldmodule.createFieldMeshIntegralSquares(weightedEdgeDiscontinuity, self._fitter.getModelReferenceCoordinatesField(), lineMesh)
-    #    edgeDiscontinuityPenaltyObjective.setNumbersOfPoints(numberOfGaussPoints)
-    #    return edgeDiscontinuityPenaltyObjective

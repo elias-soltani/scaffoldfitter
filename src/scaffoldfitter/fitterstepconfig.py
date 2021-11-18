@@ -5,6 +5,7 @@ Fit step for configuring subsequent behaviour, e.g. data projection settings.
 from scaffoldfitter.fitterstep import FitterStep
 import sys
 
+
 class FitterStepConfig(FitterStep):
 
     _jsonTypeId = "_FitterStepConfig"
@@ -19,7 +20,7 @@ class FitterStepConfig(FitterStep):
     def getJsonTypeId(cls):
         return cls._jsonTypeId
 
-    def decodeSettingsJSONDict(self, dctIn : dict):
+    def decodeSettingsJSONDict(self, dctIn: dict):
         """
         Decode definition of step from JSON dict.
         """

@@ -1,11 +1,11 @@
 """
 Fit step for gross alignment and scale.
 """
-
 import copy
 import math
+
 from opencmiss.maths.vectorops import div, euler_to_rotation_matrix, matrix_vector_mult, mult, sub
-from opencmiss.utils.zinc.field import assignFieldParameters, get_group_list, create_field_euler_angles_rotation_matrix
+from opencmiss.utils.zinc.field import get_group_list, create_field_euler_angles_rotation_matrix
 from opencmiss.utils.zinc.finiteelement import evaluate_field_nodeset_mean, getNodeNameCentres
 from opencmiss.utils.zinc.general import ChangeManager
 from opencmiss.zinc.element import Mesh
@@ -15,8 +15,8 @@ from opencmiss.zinc.result import RESULT_OK, RESULT_WARNING_PART_DONE
 from scaffoldfitter.fitterstep import FitterStep
 
 
-def createFieldsTransformations(coordinates: Field, rotation_angles=None, scale_value=1.0, \
-    translation_offsets=None, translation_scale_factor=1.0):
+def createFieldsTransformations(coordinates: Field, rotation_angles=None, scale_value=1.0,
+                                translation_offsets=None, translation_scale_factor=1.0):
     """
     Create constant fields for rotation, scale and translation containing the supplied
     values, plus the transformed coordinates applying them in the supplied order.
@@ -35,7 +35,7 @@ def createFieldsTransformations(coordinates: Field, rotation_angles=None, scale_
         translation_offsets = [0.0, 0.0, 0.0]
     components_count = coordinates.getNumberOfComponents()
     assert (components_count == 3) and (len(rotation_angles) == components_count) and isinstance(scale_value, float) \
-        and (len(translation_offsets) == components_count), "createFieldsTransformations.  Invalid arguments"
+           and (len(translation_offsets) == components_count), "createFieldsTransformations.  Invalid arguments"
     fieldmodule = coordinates.getFieldmodule()
     with ChangeManager(fieldmodule):
         # Rotate, scale, and translate model, in that order
@@ -44,10 +44,12 @@ def createFieldsTransformations(coordinates: Field, rotation_angles=None, scale_
         translation = fieldmodule.createFieldConstant(translation_offsets)
         rotation_matrix = create_field_euler_angles_rotation_matrix(fieldmodule, rotation)
         rotated_coordinates = fieldmodule.createFieldMatrixMultiply(components_count, rotation_matrix, coordinates)
-        transformed_coordinates = rotated_coordinates*scale + (translation if (translation_scale_factor == 1.0) else \
-            translation*fieldmodule.createFieldConstant([ translation_scale_factor ]*components_count))
+        transformed_coordinates = rotated_coordinates * scale + (
+            translation if (translation_scale_factor == 1.0) else
+            translation * fieldmodule.createFieldConstant([translation_scale_factor] * components_count))
         assert transformed_coordinates.isValid()
     return transformed_coordinates, rotation, scale, translation
+
 
 class FitterStepAlign(FitterStep):
 
@@ -57,15 +59,15 @@ class FitterStepAlign(FitterStep):
         super(FitterStepAlign, self).__init__()
         self._alignGroups = False
         self._alignMarkers = False
-        self._rotation = [ 0.0, 0.0, 0.0 ]
+        self._rotation = [0.0, 0.0, 0.0]
         self._scale = 1.0
-        self._translation = [ 0.0, 0.0, 0.0 ]
+        self._translation = [0.0, 0.0, 0.0]
 
     @classmethod
     def getJsonTypeId(cls):
         return cls._jsonTypeId
 
-    def decodeSettingsJSONDict(self, dctIn : dict):
+    def decodeSettingsJSONDict(self, dctIn: dict):
         """
         Decode definition of step from JSON dict.
         """
@@ -86,12 +88,13 @@ class FitterStepAlign(FitterStep):
         """
         dct = super().encodeSettingsJSONDict()
         dct.update({
-            "alignGroups" : self._alignGroups,
-            "alignMarkers" : self._alignMarkers,
-            "rotation" : self._rotation,
-            "scale" : self._scale,
-            "translation" : self._translation
-            })
+            "alignGroups": self._alignGroups,
+            "alignMarkers": self._alignMarkers,
+            "rotation": self._rotation,
+            "scale": self._scale,
+            "translation": self._translation
+        })
+
         return dct
 
     def isAlignGroups(self):
@@ -177,14 +180,14 @@ class FitterStepAlign(FitterStep):
         assert modelCoordinates, "Align:  Missing model coordinates"
         if self._alignGroups or self._alignMarkers:
             self._doAutoAlign()
-        fieldmodule = self._fitter._fieldmodule
+        fieldmodule = self._fitter.getFieldmodule()
         with ChangeManager(fieldmodule):
             # rotate, scale and translate model
             modelCoordinatesTransformed = createFieldsTransformations(
                 modelCoordinates, self._rotation, self._scale, self._translation)[0]
-            fieldassignment = self._fitter._modelCoordinatesField.createFieldassignment(modelCoordinatesTransformed)
+            fieldassignment = self._fitter.getModelCoordinatesField().createFieldassignment(modelCoordinatesTransformed)
             result = fieldassignment.assign()
-            assert result in [ RESULT_OK, RESULT_WARNING_PART_DONE ], "Align:  Failed to transform model"
+            assert result in [RESULT_OK, RESULT_WARNING_PART_DONE], "Align:  Failed to transform model"
             self._fitter.updateModelReferenceCoordinates()
             del fieldassignment
             del modelCoordinatesTransformed
@@ -198,12 +201,10 @@ class FitterStepAlign(FitterStep):
         Perform auto alignment to groups and/or markers.
         """
         modelCoordinates = self._fitter.getModelCoordinatesField()
-        componentsCount = modelCoordinates.getNumberOfComponents()
         pointMap = {}  # dict group/marker name -> (modelCoordinates, dataCoordinates)
 
         if self._alignGroups:
-            fieldmodule = self._fitter._fieldmodule
-            datapoints = fieldmodule.findNodesetByFieldDomainType(Field.DOMAIN_TYPE_DATAPOINTS)
+            fieldmodule = self._fitter.getFieldmodule()
             dataCoordinates = self._fitter.getDataCoordinatesField()
             groups = get_group_list(fieldmodule)
             with ChangeManager(fieldmodule):
@@ -220,20 +221,21 @@ class FitterStepAlign(FitterStep):
                     coordinates_integral = evaluate_field_mesh_integral(modelCoordinates, modelCoordinates, meshGroup)
                     mass = evaluate_field_mesh_integral(one, modelCoordinates, meshGroup)
                     meanModelCoordinates = div(coordinates_integral, mass)
-                    pointMap[groupName] = ( meanModelCoordinates, meanDataCoordinates )
+                    pointMap[groupName] = (meanModelCoordinates, meanDataCoordinates)
                 del one
 
         if self._alignMarkers:
             markerGroup = self._fitter.getMarkerGroup()
             assert markerGroup, "Align:  No marker group to align with"
-            markerPrefix = markerGroup.getName()
 
             markerNodeGroup, markerLocation, markerCoordinates, markerName = self._fitter.getMarkerModelFields()
-            assert markerNodeGroup and markerCoordinates and markerName, "Align:  No marker group, coordinates or name fields"
+            assert markerNodeGroup and markerCoordinates and markerName, \
+                "Align:  No marker group, coordinates or name fields"
             modelMarkers = getNodeNameCentres(markerNodeGroup, markerCoordinates, markerName)
 
             markerDataGroup, markerDataCoordinates, markerDataName = self._fitter.getMarkerDataFields()
-            assert markerDataGroup and markerDataCoordinates and markerDataName, "Align:  No marker data group, coordinates or name fields"
+            assert markerDataGroup and markerDataCoordinates and markerDataName, \
+                "Align:  No marker data group, coordinates or name fields"
             dataMarkers = getNodeNameCentres(markerDataGroup, markerDataCoordinates, markerDataName)
 
             # match model and data markers, warn of unmatched markers
@@ -243,9 +245,10 @@ class FitterStepAlign(FitterStep):
                 matchName = modelName.strip().casefold()
                 for dataName in dataMarkers:
                     if dataName.strip().casefold() == matchName:
-                        pointMap[modelName] = ( modelMarkers[modelName], dataMarkers[dataName] )
+                        pointMap[modelName] = (modelMarkers[modelName], dataMarkers[dataName])
                         if writeDiagnostics:
-                            print("Align:  Model marker '" + modelName + "' found in data" + (" as '" + dataName +"'" if (dataName != modelName) else ""))
+                            print("Align:  Model marker '" + modelName + "' found in data" +
+                                  (" as '" + dataName + "'" if (dataName != modelName) else ""))
                             dataMarkers.pop(dataName)
                         break
                 else:
@@ -265,7 +268,7 @@ class FitterStepAlign(FitterStep):
         :param pointMap: dict name -> (modelCoordinates, dataCoordinates)
         """
         assert len(pointMap) >= 3, "Align:  Only " + str(len(pointMap)) + " points - need at least 3"
-        region = self._fitter._context.createRegion()
+        region = self._fitter.getContext().createRegion()
         fieldmodule = region.getFieldmodule()
 
         with ChangeManager(fieldmodule):
@@ -281,7 +284,7 @@ class FitterStepAlign(FitterStep):
             datasum = [0.0, 0.0, 0.0]
             modelMin = copy.deepcopy(list(pointMap.values())[0][0])
             modelMax = copy.deepcopy(list(pointMap.values())[0][0])
-            dataMin =  copy.deepcopy(list(pointMap.values())[0][1])
+            dataMin = copy.deepcopy(list(pointMap.values())[0][1])
             dataMax = copy.deepcopy(list(pointMap.values())[0][1])
             for name, positions in pointMap.items():
                 modelx = positions[0]
@@ -292,7 +295,8 @@ class FitterStepAlign(FitterStep):
                 fieldcache.setNode(node)
                 result1 = modelCoordinates.assignReal(fieldcache, positions[0])
                 result2 = dataCoordinates.assignReal(fieldcache, positions[1])
-                assert (result1 == RESULT_OK) and (result2 == RESULT_OK), "Align:  Failed to set up data for alignment to markers optimisation"
+                assert (result1 == RESULT_OK) and (result2 == RESULT_OK), \
+                    "Align:  Failed to set up data for alignment to markers optimisation"
                 for c in range(3):
                     modelMin[c] = min(modelx[c], modelMin[c])
                     modelMax[c] = max(modelx[c], modelMax[c])
@@ -314,8 +318,8 @@ class FitterStepAlign(FitterStep):
             translationScaleFactor = 1.0
             first = True
             fieldcache = fieldmodule.createFieldcache()
-            modelCoordinatesTransformed, rotation, scale, translation = createFieldsTransformations(modelCoordinates,
-                                                                                                    scale_value=scaleFactor)
+            modelCoordinatesTransformed, rotation, scale, translation = \
+                createFieldsTransformations(modelCoordinates, scale_value=scaleFactor)
 
             # create objective = sum of squares of vector from modelCoordinatesTransformed to dataCoordinates
             markerDiff = fieldmodule.createFieldSubtract(dataCoordinates, modelCoordinatesTransformed)
@@ -345,41 +349,42 @@ class FitterStepAlign(FitterStep):
             rotation.assignReal(fieldcache, minRotationAngles)
             translation.assignReal(fieldcache, minTranslation)
 
-            assert objective.isValid(), "Align:  Failed to set up objective function for alignment to markers optimisation"
+            assert objective.isValid(), \
+                "Align:  Failed to set up objective function for alignment to markers optimisation"
 
         optimisation = fieldmodule.createOptimisation()
         optimisation.setMethod(Optimisation.METHOD_LEAST_SQUARES_QUASI_NEWTON)
-        #optimisation.setMethod(Optimisation.METHOD_QUASI_NEWTON)
+        # optimisation.setMethod(Optimisation.METHOD_QUASI_NEWTON)
         optimisation.addObjectiveField(objective)
         optimisation.addDependentField(rotation)
         optimisation.addDependentField(scale)
         optimisation.addDependentField(translation)
 
-        #FunctionTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_FUNCTION_TOLERANCE)
-        #GradientTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_GRADIENT_TOLERANCE)
-        #StepTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_STEP_TOLERANCE)
-        #MaximumStep = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_MAXIMUM_STEP)
-        #MinimumStep = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_MINIMUM_STEP)
-        #LinesearchTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_LINESEARCH_TOLERANCE)
-        #TrustRegionSize = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_TRUST_REGION_SIZE)
+        # FunctionTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_FUNCTION_TOLERANCE)
+        # GradientTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_GRADIENT_TOLERANCE)
+        # StepTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_STEP_TOLERANCE)
+        # MaximumStep = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_MAXIMUM_STEP)
+        # MinimumStep = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_MINIMUM_STEP)
+        # LinesearchTolerance = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_LINESEARCH_TOLERANCE)
+        # TrustRegionSize = optimisation.getAttributeReal(Optimisation.ATTRIBUTE_TRUST_REGION_SIZE)
 
-        #tol_scale = dataScale*dataScale
-        #FunctionTolerance *= tol_scale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_FUNCTION_TOLERANCE, FunctionTolerance)
-        #GradientTolerance *= tol_scale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_GRADIENT_TOLERANCE, GradientTolerance)
-        #StepTolerance *= tol_scale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_STEP_TOLERANCE, StepTolerance)
-        #MaximumStep *= tol_scale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_MAXIMUM_STEP, MaximumStep)
-        #MinimumStep *= tol_scale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_MINIMUM_STEP, MinimumStep)
-        #LinesearchTolerance *= dataScale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_LINESEARCH_TOLERANCE, LinesearchTolerance)
-        #TrustRegionSize *= dataScale
-        #optimisation.setAttributeReal(Optimisation.ATTRIBUTE_TRUST_REGION_SIZE, TrustRegionSize)
+        # tol_scale = dataScale*dataScale
+        # FunctionTolerance *= tol_scale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_FUNCTION_TOLERANCE, FunctionTolerance)
+        # GradientTolerance *= tol_scale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_GRADIENT_TOLERANCE, GradientTolerance)
+        # StepTolerance *= tol_scale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_STEP_TOLERANCE, StepTolerance)
+        # MaximumStep *= tol_scale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_MAXIMUM_STEP, MaximumStep)
+        # MinimumStep *= tol_scale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_MINIMUM_STEP, MinimumStep)
+        # LinesearchTolerance *= dataScale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_LINESEARCH_TOLERANCE, LinesearchTolerance)
+        # TrustRegionSize *= dataScale
+        # optimisation.setAttributeReal(Optimisation.ATTRIBUTE_TRUST_REGION_SIZE, TrustRegionSize)
 
-        #if self.getDiagnosticLevel() > 0:
+        # if self.getDiagnosticLevel() > 0:
         #    print("Function Tolerance", FunctionTolerance)
         #    print("Gradient Tolerance", GradientTolerance)
         #    print("Step Tolerance", StepTolerance)
@@ -397,10 +402,12 @@ class FitterStepAlign(FitterStep):
         result1, self._rotation = rotation.evaluateReal(fieldcache, 3)
         result2, self._scale = scale.evaluateReal(fieldcache, 1)
         result3, self._translation = translation.evaluateReal(fieldcache, 3)
-        self._translation = [ s*translationScaleFactor for s in self._translation ]
-        assert (result1 == RESULT_OK) and (result2 == RESULT_OK) and (result3 == RESULT_OK), "Align:  Failed to evaluate transformation for alignment to markers"
+        self._translation = [s * translationScaleFactor for s in self._translation]
+        assert (result1 == RESULT_OK) and (result2 == RESULT_OK) and (result3 == RESULT_OK), \
+            "Align:  Failed to evaluate transformation for alignment to markers"
 
-def evaluate_field_mesh_integral(field : Field, coordinates : Field, mesh: Mesh, number_of_points = 4):
+
+def evaluate_field_mesh_integral(field: Field, coordinates: Field, mesh: Mesh, number_of_points=4):
     """
     Integrate value of a field over mesh using Gaussian Quadrature.
     :param field: Field to integrate over mesh.

@@ -1,8 +1,10 @@
-from setuptools import setup, find_packages
-import os
 import io
+import os
+
+from setuptools import setup, find_packages
 
 SETUP_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 # List all of your Python package dependencies in the
 # requirements.txt file
@@ -13,12 +15,13 @@ def readfile(filename, split=False):
             return stream.read().split("\n")
         return stream.read()
 
+
 readme = readfile("README.rst", split=True)[3:]  # skip title
 # For requirements not hosted on PyPi place listings
 # into the 'requirements.txt' file.
 requires = [
     # minimal requirements listing
-    "opencmiss.math",
+    "opencmiss.maths",
     "opencmiss.utils >= 0.3",
     "opencmiss.zinc >= 3.4"
 ]
@@ -43,4 +46,4 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=requires,
-    )
+)
